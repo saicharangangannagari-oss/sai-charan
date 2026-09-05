@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedLens — Clinical Information Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F7F6; --panel:#FFFFFF; --ink:#16232B; --ink-soft:#4C5C63;
+    --line:#CBD6D2; --line-soft:#E3E9E7;
+    --teal:#0E6B5C; --teal-wash:#DCEBE6;
+    --amber:#93600A; --amber-wash:#F3E6CE;
+    --brick:#A6362A; --brick-wash:#F3DEDB;
+    --violet:#5B3FA6; --violet-wash:#EAE6F6;
+    --slate:#5B6B72;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Source Serif 4', serif; font-weight:600; margin:0; color:var(--ink);}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:14px;}
+  a{color:var(--teal);}
+  ::selection{background:var(--teal-wash);}
+  :focus-visible{outline:2px solid var(--teal); outline-offset:1px;}
+
+  #app{display:flex; min-height:100vh;}
+  .rail{width:212px; flex:0 0 212px; background:var(--panel); border-right:1px solid var(--line); padding:20px 0 14px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column;}
+  .rail-brand{padding:0 18px 14px; border-bottom:1px solid var(--line-soft);}
+  .rail-brand .mark{font-family:'Source Serif 4', serif; font-weight:700; font-size:19px;}
+  .rail-brand .mark span{color:var(--teal);}
+  .rail-brand .sub{font-size:10.5px; color:var(--slate); margin-top:3px; line-height:1.4;}
+
+  .patient-switch{padding:12px 18px; border-bottom:1px solid var(--line-soft);}
+  .patient-switch label{font-size:10px; color:var(--slate); display:block; margin-bottom:5px;}
+  .patient-switch select{width:100%; padding:6px 7px; border:1px solid var(--line); border-radius:2px; font-size:12.5px; background:#fff;}
+  .patient-switch .row{display:flex; gap:6px; margin-top:6px;}
+  .patient-switch button{flex:1; font-size:11px; padding:5px 6px; border:1px solid var(--line); background:#fff; border-radius:2px; color:var(--ink-soft);}
+  .patient-switch button:hover{border-color:var(--teal); color:var(--teal);}
+
+  .rail-nav{display:flex; flex-direction:column; margin-top:4px; overflow-y:auto;}
+  .rail-btn{text-align:left; background:none; border:none; border-left:2px solid transparent; padding:9px 18px; font-size:13px; color:var(--ink-soft); display:flex; justify-content:space-between; align-items:center; gap:6px;}
+  .rail-btn .n{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--slate); margin-right:7px;}
+  .rail-btn:hover{background:var(--paper); color:var(--ink);}
+  .rail-btn.active{border-left:2px solid var(--teal); background:var(--teal-wash); color:var(--teal); font-weight:500;}
+  .rail-btn.active .n{color:var(--teal);}
+  .rail-pill{font-family:'IBM Plex Mono',monospace; font-size:10px; background:var(--brick-wash); color:var(--brick); border-radius:8px; padding:0 6px;}
+
+  .rail-foot{margin-top:auto; padding:12px 18px 0; border-top:1px solid var(--line-soft); font-size:10.5px; color:var(--slate); display:flex; flex-direction:column; gap:6px;}
+  .rail-foot button{background:none;border:1px solid var(--line); color:var(--ink-soft); font-size:10.5px; padding:5px 8px; border-radius:2px; text-align:left;}
+  .rail-foot button:hover{border-color:var(--ink); color:var(--ink);}
+  .rail-foot button.danger:hover{border-color:var(--brick); color:var(--brick);}
+
+  main{flex:1; min-width:0; padding:34px 42px 80px; max-width:960px;}
+  @media (max-width:760px){
+    .rail{position:fixed; z-index:20; transform:translateX(-100%); transition:transform .18s ease; box-shadow:0 0 0 100vmax rgba(0,0,0,0);}
+    .rail.open{transform:translateX(0); box-shadow:0 0 0 100vmax rgba(10,20,20,.35);}
+    main{padding:60px 18px 60px;}
+    #menuToggle{display:block !important;}
+  }
+  #menuToggle{display:none; position:fixed; top:14px; left:14px; z-index:21; background:var(--ink); color:#fff; border:none; border-radius:3px; padding:8px 10px; font-size:13px;}
+
+  .view{animation:fadein .18s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion:reduce){ .view{animation:none;} }
+
+  .view-head{margin-bottom:24px; padding-bottom:14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-end; gap:14px; flex-wrap:wrap;}
+  .eyebrow{font-size:11.5px; color:var(--slate); margin-bottom:5px;}
+  .view-head h1{font-size:25px;}
+  .view-head p{color:var(--ink-soft); margin-top:5px; max-width:58ch; font-size:13.5px;}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:3px; padding:20px 22px; margin-bottom:18px;}
+  .panel h2{font-size:15.5px; margin-bottom:13px; display:flex; align-items:center; gap:8px;}
+  .panel h2 .count{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--slate); font-weight:400;}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:700px){.grid3,.grid2{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--line); border-radius:3px; padding:14px 16px; background:var(--panel);}
+  .stat .stat-num{font-family:'Source Serif 4',serif; font-size:28px; line-height:1;}
+  .stat .stat-label{font-size:11.5px; color:var(--slate); margin-top:6px;}
+  .stat.alert .stat-num{color:var(--brick);}
+  .stat.ok .stat-num{color:var(--teal);}
+
+  .field-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:13px;}
+  .field{flex:1 1 200px; display:flex; flex-direction:column; gap:5px;}
+  .field label{font-size:12px; color:var(--ink-soft);}
+  .field input, .field select, .field textarea{border:1px solid var(--line); border-radius:2px; padding:8px 10px; background:#fff; color:var(--ink);}
+  .field textarea{resize:vertical; min-height:54px;}
+  .hint{font-size:11.5px; color:var(--slate); margin-top:2px;}
+
+  .btn{border:1px solid var(--ink); background:var(--ink); color:#fff; padding:9px 16px; border-radius:2px; font-size:13px; font-weight:500;}
+  .btn:hover{background:#233742;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn.secondary{background:#fff; color:var(--ink); border:1px solid var(--line);}
+  .btn.secondary:hover{border-color:var(--ink);}
+  .btn.teal{background:var(--teal); border-color:var(--teal);}
+  .btn.teal:hover{background:#0b5849;}
+  .btn.ghost{background:none; border:none; color:var(--teal); padding:4px 0; font-size:12.5px;}
+  .btn.small{padding:5px 10px; font-size:12px;}
+
+  .badge{display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 7px; border-radius:2px; font-weight:500; border:1px solid transparent;}
+  .badge.user{background:var(--teal-wash); color:var(--teal); border-color:#bfe0d8;}
+  .badge.ai{background:var(--violet-wash); color:var(--violet); border-color:#d9d1f0;}
+  .badge.verified{background:var(--teal-wash); color:var(--teal);}
+  .badge.unverified{background:var(--amber-wash); color:var(--amber);}
+  .badge.flag-high{background:var(--brick-wash); color:var(--brick);}
+  .badge.flag-low{background:var(--amber-wash); color:var(--amber);}
+  .badge.flag-normal{background:var(--teal-wash); color:var(--teal);}
+  .badge.flag-unknown{background:#EDEFEE; color:var(--slate);}
+  .conf-dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px;}
+  .conf-high{background:var(--teal);} .conf-medium{background:var(--amber);} .conf-low{background:var(--brick);}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; font-size:11px; color:var(--slate); border-bottom:1px solid var(--line); padding:7px 8px; font-weight:500;}
+  td{padding:8px 8px; border-bottom:1px solid var(--line-soft); vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.num, th.num{font-family:'IBM Plex Mono',monospace;}
+
+  .empty{text-align:center; padding:32px 20px; color:var(--slate); font-size:13.5px; border:1px dashed var(--line); border-radius:3px; background:var(--paper);}
+  .empty b{color:var(--ink);}
+
+  .dropzone{border:1.5px dashed var(--line); border-radius:3px; padding:24px; text-align:center; background:var(--paper); cursor:pointer; margin-bottom:14px;}
+  .dropzone:hover, .dropzone.drag{border-color:var(--teal); background:var(--teal-wash);}
+  .dropzone .dz-title{font-family:'Source Serif 4',serif; font-size:15px; margin-bottom:4px;}
+  .dropzone .dz-sub{font-size:12px; color:var(--slate);}
+
+  .report-card{border:1px solid var(--line); border-radius:3px; padding:13px 16px; margin-bottom:9px; background:#fff; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  .report-card .meta{font-size:12px; color:var(--slate); margin-top:3px;}
+  .report-card .title{font-weight:500; font-size:14px;}
+
+  .divider{height:1px; background:var(--line-soft); margin:16px 0;}
+
+  .source-split{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:700px){.source-split{grid-template-columns:1fr;}}
+  .source-col h3{font-size:12px; color:var(--slate); margin-bottom:8px; font-weight:500; font-family:'IBM Plex Sans',sans-serif;}
+  .raw-pane{background:#101B22; color:#CFE3DC; padding:10px; border-radius:3px; max-height:340px; overflow:auto; font-size:12px; font-family:'IBM Plex Mono',monospace; white-space:pre-wrap;}
+
+  .verify-row{display:grid; grid-template-columns:1.3fr .75fr .55fr 1fr .65fr .55fr .3fr; gap:7px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line-soft);}
+  .verify-row input, .verify-row select{width:100%; padding:5px 6px; font-size:12px;}
+  .verify-head{font-size:10px; color:var(--slate);}
+  .row-x{background:none; border:none; color:var(--slate); font-size:14px;}
+  .row-x:hover{color:var(--brick);}
+  .check-note{font-size:10.5px; color:var(--amber); margin-top:2px;}
+
+  .callout{border-left:3px solid var(--teal); background:var(--teal-wash); padding:11px 14px; border-radius:0 3px 3px 0; font-size:13px; margin-bottom:16px;}
+  .callout.warn{border-color:var(--amber); background:var(--amber-wash);}
+  .callout.danger{border-color:var(--brick); background:var(--brick-wash);}
+  .callout.disclaimer{border-color:var(--slate); background:#EEF1F0; color:var(--ink-soft); font-size:12px;}
+
+  .search-bar{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .search-bar input{flex:1 1 220px; padding:8px 10px; border:1px solid var(--line); border-radius:2px;}
+  .search-bar select{padding:8px 10px; border:1px solid var(--line); border-radius:2px;}
+
+  .timeline{position:relative; padding-left:20px;}
+  .timeline::before{content:"";position:absolute; left:5px; top:4px; bottom:4px; width:1px; background:var(--line);}
+  .tl-item{position:relative; margin-bottom:22px;}
+  .tl-item::before{content:"";position:absolute; left:-19px; top:4px; width:9px; height:9px; border-radius:50%; background:var(--teal); border:2px solid var(--panel);}
+  .tl-date{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--slate); margin-bottom:4px;}
+  .trend{font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  .trend.up{color:var(--brick);} .trend.down{color:var(--teal);} .trend.flat{color:var(--slate);}
+
+  .loader{display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--slate);}
+  .spinner{width:13px; height:13px; border:2px solid var(--line); border-top-color:var(--teal); border-radius:50%; animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .summary-text{font-size:15px; line-height:1.75; white-space:pre-wrap; font-family:'Source Serif 4',serif;}
+  .conflict-item{border:1px solid var(--line); border-radius:3px; padding:10px 12px; margin-bottom:8px; font-size:13px;}
+  .conflict-item.warning{border-left:3px solid var(--brick);}
+  .conflict-item.info{border-left:3px solid var(--slate);}
+
+  .audit-item{display:flex; gap:12px; padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:13px;}
+  .audit-item:last-child{border-bottom:none;}
+  .audit-time{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); flex:0 0 148px;}
+
+  .lock-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--paper);}
+  .lock-card{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:34px 36px; width:100%; max-width:360px;}
+  .lock-card .mark{font-family:'Source Serif 4',serif; font-weight:700; font-size:22px; margin-bottom:4px;}
+  .lock-card .mark span{color:var(--teal);}
+  .lock-card p{font-size:12.5px; color:var(--slate); margin:6px 0 18px;}
+  .lock-card input{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:2px; font-size:16px; letter-spacing:3px; text-align:center; margin-bottom:10px;}
+  .lock-card .err{color:var(--brick); font-size:12px; min-height:16px; margin-bottom:6px;}
+
+  @media print{
+    .rail, #menuToggle, .no-print{display:none !important;}
+    main{padding:0; max-width:100%;}
+    body{background:#fff;}
+    .panel{border:none; box-shadow:none; padding:0; margin-bottom:20px; page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div id="lockRoot"></div>
+
+<button id="menuToggle" onclick="document.querySelector('.rail').classList.toggle('open')">☰ Menu</button>
+
+<div id="app" style="display:none;">
+  <nav class="rail">
+    <div class="rail-brand">
+      <div class="mark">Med<span>Lens</span></div>
+      <div class="sub">Structures fragmented medical information. Never diagnoses.</div>
+    </div>
+    <div class="patient-switch" id="patientSwitch"></div>
+    <div class="rail-nav" id="railNav"></div>
+    <div class="rail-foot">
+      <span>Local, on-device storage only.</span>
+      <button id="exportBtn">Export patient JSON</button>
+      <button id="importBtn">Import patient JSON</button>
+      <button id="lockBtn">Lock app</button>
+      <button class="danger" id="wipeBtn">Delete this patient</button>
+    </div>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<input type="file" id="importFile" accept="application/json" style="display:none;">
+
+<script>
+/* ============================= STORAGE FALLBACK ============================= */
+// Ensures on-device persistence in standard browsers using localStorage
+if (!window.storage) {
+  window.storage = {
+    async get(key, shared) {
+      const val = localStorage.getItem(key);
+      return val !== null ? { value: val } : null;
+    },
+    async set(key, val, shared) {
+      localStorage.setItem(key, val);
+    },
+    async delete(key, shared) {
+      localStorage.removeItem(key);
+    }
+  };
+}
+
+/* ============================= CONSTANTS ============================= */
+const VIEWS = [
+  {id:'dashboard', label:'Dashboard', n:'00'},
+  {id:'intake', label:'Patient Intake', n:'01'},
+  {id:'reports', label:'Reports', n:'02'},
+  {id:'record', label:'Structured Record', n:'03'},
+  {id:'timeline', label:'Timeline', n:'04'},
+  {id:'summary', label:'AI Summary', n:'05'},
+  {id:'history', label:'Audit History', n:'06'},
+];
+let currentView = 'dashboard';
+let PATIENTS = [];       // [{id,label,createdAt}]
+let CURRENT_PID = null;
+let PROFILE = null;
+let REPORTS = [];
+let AUDIT = [];
+let PENDING_EXTRACTION = null;
+
+/* ============================= ACCESS LOCK (demo-level) ============================= */
+async function getPin(){
+  try{ const r = await window.storage.get('app-pin', false); return r ? JSON.parse(r.value) : null; }catch(e){ return null; }
+}
+async function setPin(pin){ await window.storage.set('app-pin', JSON.stringify(pin), false); }
+async function clearPin(){ try{ await window.storage.delete('app-pin', false); }catch(e){} }
+
+async function renderLock(){
+  const pin = await getPin();
+  const root = document.getElementById('lockRoot');
+  if(!pin){
+    document.getElementById('app').style.display='flex';
+    root.innerHTML='';
+    boot();
+    return;
+  }
+  document.getElementById('app').style.display='none';
+  root.innerHTML = `
+  <div class="lock-screen">
+    <div class="lock-card">
+      <div class="mark">Med<span>Lens</span></div>
+      <p>This session is locked with a local access PIN. This is a demo-level protection for the on-device record — not a substitute for real authentication in a clinical deployment.</p>
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="8" placeholder="••••">
+      <div class="err" id="pinErr"></div>
+      <button class="btn teal" style="width:100%;" id="pinSubmit">Unlock</button>
+    </div>
+  </div>`;
+  document.getElementById('pinSubmit').addEventListener('click', async ()=>{
+    const val = document.getElementById('pinInput').value;
+    if(val === pin){ document.getElementById('app').style.display='flex'; root.innerHTML=''; boot(); }
+    else{ document.getElementById('pinErr').textContent = 'Incorrect PIN.'; }
+  });
+  document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('pinSubmit').click(); });
+}
+
+/* ============================= STORAGE — patient-scoped ============================= */
+function k(suffix){ return `patient:${CURRENT_PID}:${suffix}`; }
+
+async function loadPatientsIndex(){
+  try{ const r = await window.storage.get('patients-index', false); return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function savePatientsIndex(idx){ await window.storage.set('patients-index', JSON.stringify(idx), false); }
+
+async function createPatient(label){
+  const id = 'pt_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const idx = await loadPatientsIndex();
+  idx.push({id, label: label||'New patient', createdAt: new Date().toISOString()});
+  await savePatientsIndex(idx);
+  return id;
+}
+
+async function loadProfile(){ try{ const r = await window.storage.get(k('profile'), false); PROFILE = r ? JSON.parse(r.value) : null; }catch(e){ PROFILE = null; } }
+async function saveProfile(p){ p.updatedAt = new Date().toISOString(); await window.storage.set(k('profile'), JSON.stringify(p), false); PROFILE = p; }
+
+async function loadReportsIndex(){ try{ const r = await window.storage.get(k('reports-index'), false); return r ? JSON.parse(r.value) : []; }catch(e){ return []; } }
+async function saveReportsIndex(idx){ await window.storage.set(k('reports-index'), JSON.stringify(idx), false); }
+async function saveReport(rep){
+  await window.storage.set(k('report:'+rep.id), JSON.stringify(rep), false);
+  const idx = await loadReportsIndex();
+  const filtered = idx.filter(i=>i.id!==rep.id);
+  filtered.push({id:rep.id, title:rep.title, date:rep.date, reportType:rep.reportType, verified:rep.verified});
+  await saveReportsIndex(filtered);
+}
+async function loadAllReports(){
+  const idx = await loadReportsIndex();
+  const out = [];
+  for(const i of idx){ try{ const r = await window.storage.get(k('report:'+i.id), false); if(r) out.push(JSON.parse(r.value)); }catch(e){} }
+  out.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||'').localeCompare(a.createdAt||''));
+  return out;
+}
+async function deleteReportById(id){
+  try{ await window.storage.delete(k('report:'+id), false); }catch(e){}
+  const idx = await loadReportsIndex();
+  await saveReportsIndex(idx.filter(i=>i.id!==id));
+}
+
+async function loadAudit(){ try{ const r = await window.storage.get(k('audit'), false); return r ? JSON.parse(r.value) : []; }catch(e){ return []; } }
+async function logAudit(action, detail){
+  const a = await loadAudit();
+  a.unshift({time:new Date().toISOString(), action, detail});
+  await window.storage.set(k('audit'), JSON.stringify(a.slice(0,300)), false);
+  AUDIT = a;
+}
+
+async function wipeCurrentPatient(){
+  const idx = await loadReportsIndex();
+  for(const i of idx){ try{ await window.storage.delete(k('report:'+i.id), false); }catch(e){} }
+  try{ await window.storage.delete(k('reports-index'), false); }catch(e){}
+  try{ await window.storage.delete(k('profile'), false); }catch(e){}
+  try{ await window.storage.delete(k('audit'), false); }catch(e){}
+  const pidx = await loadPatientsIndex();
+  const remaining = pidx.filter(p=>p.id!==CURRENT_PID);
+  await savePatientsIndex(remaining);
+  PATIENTS = remaining;
+  if(remaining.length){ CURRENT_PID = remaining[0].id; }
+  else{ CURRENT_PID = await createPatient('Patient 1'); PATIENTS = await loadPatientsIndex(); }
+  await loadPatientState();
+  render();
+}
+
+/* ============================= BACKEND API ============================= */
+// Connects to our backend server holding the API keys & model endpoints
+const API_BASE = window.MEDLENS_API_BASE || ''; // same-origin by default
+const APP_KEY = window.MEDLENS_APP_KEY || null;
+
+function apiHeaders(extra){
+  const h = Object.assign({}, extra||{});
+  if(APP_KEY) h['x-app-key'] = APP_KEY;
+  return h;
+}
+async function apiJson(path, body){
+  const res = await fetch(API_BASE + path, {
+    method:'POST', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+async function apiExtract(file){
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(API_BASE + '/api/extract', { method:'POST', headers: apiHeaders(), body: form });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+async function apiSummary(payload){ return (await apiJson('/api/summary', { payload })).text; }
+async function apiConflictCheck(payload){ return (await apiJson('/api/conflict-check', { payload })).issues; }
+
+/* ============================= NUMERIC RANGE CROSS-CHECK ============================= */
+function parseRangeAdvisory(rangeStr, valueStr){
+  if(!rangeStr || valueStr==null) return null;
+  const v = parseFloat(String(valueStr).replace(/[^\d.\-]/g,''));
+  if(isNaN(v)) return null;
+  const s = String(rangeStr).trim();
+  let m;
+  if((m = s.match(/(-?\d+(?:\.\d+)?)\s*(?:-|to|–|—)\s*(-?\d+(?:\.\d+)?)/i))){
+    const lo = parseFloat(m[1]), hi = parseFloat(m[2]);
+    if(!isNaN(lo) && !isNaN(hi)) return v < lo ? 'low' : v > hi ? 'high' : 'normal';
+  }
+  if((m = s.match(/(?:<=|≤)\s*(-?\d+(?:\.\d+)?)/))) return v <= parseFloat(m[1]) ? 'normal' : 'high';
+  if((m = s.match(/[<]\s*(-?\d+(?:\.\d+)?)/))) return v < parseFloat(m[1]) ? 'normal' : 'high';
+  if((m = s.match(/(?:>=|≥)\s*(-?\d+(?:\.\d+)?)/))) return v >= parseFloat(m[1]) ? 'normal' : 'low';
+  if((m = s.match(/[>]\s*(-?\d+(?:\.\d+)?)/))) return v > parseFloat(m[1]) ? 'normal' : 'low';
+  return null;
+}
+
+/* ============================= PATIENT SWITCHER ============================= */
+function renderPatientSwitch(){
+  const el = document.getElementById('patientSwitch');
+  el.innerHTML = `
+    <label for="ptSel">Active patient</label>
+    <select id="ptSel">${PATIENTS.map(p=>`<option value="${p.id}" ${p.id===CURRENT_PID?'selected':''}>${esc(p.label)}</option>`).join('')}</select>
+    <div class="row">
+      <button id="ptNew">+ New</button>
+      <button id="ptRename">Rename</button>
+    </div>`;
+  document.getElementById('ptSel').addEventListener('change', async (e)=>{
+    CURRENT_PID = e.target.value;
+    currentView = 'dashboard';
+    await loadPatientState();
+    render();
+  });
+  document.getElementById('ptNew').addEventListener('click', async ()=>{
+    const label = prompt('Label for the new patient record (e.g. initials or a case ID):', 'New patient');
+    if(label===null) return;
+    const id = await createPatient(label.trim()||'New patient');
+    PATIENTS = await loadPatientsIndex();
+    CURRENT_PID = id;
+    currentView = 'intake';
+    await loadPatientState();
+    render();
+  });
+  document.getElementById('ptRename').addEventListener('click', async ()=>{
+    const cur = PATIENTS.find(p=>p.id===CURRENT_PID);
+    const label = prompt('Rename this patient record:', cur ? cur.label : '');
+    if(label===null || !label.trim()) return;
+    const idx = await loadPatientsIndex();
+    const next = idx.map(p=> p.id===CURRENT_PID ? {...p, label:label.trim()} : p);
+    await savePatientsIndex(next);
+    PATIENTS = next;
+    renderPatientSwitch();
+  });
+}
+
+/* ============================= SHELL RENDER ============================= */
+function render(){
+  renderPatientSwitch();
+  const nav = document.getElementById('railNav');
+  const alerts = countAlerts();
+  nav.innerHTML = VIEWS.map(v=>`<button class="rail-btn ${v.id===currentView?'active':''}" data-v="${v.id}"><span><span class="n">${v.n}</span>${v.label}</span>${v.id==='dashboard'&&alerts>0?`<span class="rail-pill">${alerts}</span>`:''}</button>`).join('');
+  nav.querySelectorAll('.rail-btn').forEach(b=> b.addEventListener('click', ()=>{ currentView=b.dataset.v; document.querySelector('.rail').classList.remove('open'); renderMain(); }));
+  renderMain();
+}
+function countAlerts(){
+  let n=0; REPORTS.forEach(r=> r.tests.forEach(t=>{ if(t.flag==='high'||t.flag==='low') n++; })); return n;
+}
+function renderMain(){
+  document.getElementById('railNav').querySelectorAll('.rail-btn').forEach(b=> b.classList.toggle('active', b.dataset.v===currentView));
+  const main = document.getElementById('main');
+  const html = {
+    dashboard: viewDashboard, intake: viewIntake, reports: viewReports, record: viewRecord,
+    timeline: viewTimeline, summary: viewSummary, history: viewHistory
+  }[currentView]();
+  main.innerHTML = `<div class="view">${html}</div>`;
+  bindViewEvents();
+}
+
+/* ============================= VIEW: DASHBOARD ============================= */
+function viewDashboard(){
+  const alerts = [];
+  REPORTS.forEach(r=> r.tests.forEach(t=>{ if(t.flag==='high'||t.flag==='low') alerts.push({...t, date:r.date, reportType:r.reportType}); }));
+  alerts.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  const needsReview = REPORTS.filter(r=>!r.verified).length;
+  const confScores = {high:3, medium:2, low:1};
+  const avgConf = REPORTS.length ? (REPORTS.reduce((s,r)=> s + (confScores[r.extractionConfidence]||2), 0) / REPORTS.length) : 0;
+  const confLabel = REPORTS.length===0 ? '—' : avgConf>=2.5 ? 'High' : avgConf>=1.6 ? 'Medium' : 'Low';
+  const checklist = [
+    {done: !!PROFILE, label:'Patient intake completed', go:'intake'},
+    {done: REPORTS.length>0, label:'At least one report uploaded', go:'reports'},
+    {done: REPORTS.some(r=>r.verified), label:'A report has been human-verified', go:'reports'},
+  ];
+  return `
+  <div class="view-head">
+    <div><div class="eyebrow">Overview</div><h1>${PROFILE && PROFILE.name ? esc(PROFILE.name) : 'Patient dashboard'}</h1>
+    <p>A snapshot of the record on file for this patient — nothing here is a diagnosis.</p></div>
+  </div>
+
+  <div class="grid3">
+    <div class="stat ${alerts.length? 'alert':''}"><div class="stat-num">${alerts.length}</div><div class="stat-label">Values outside their printed reference range</div></div>
+    <div class="stat"><div class="stat-num">${REPORTS.length}</div><div class="stat-label">Reports on file${needsReview? ` · ${needsReview} awaiting review`:''}</div></div>
+    <div class="stat ${confLabel==='High'?'ok':''}"><div class="stat-num">${confLabel}</div><div class="stat-label">Average extraction confidence</div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Recent alerts</h2>
+      ${alerts.length===0 ? `<div class="empty">No out-of-range values recorded yet.</div>` : alerts.slice(0,6).map(a=>`
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--line-soft);">
+          <div><div style="font-weight:500; font-size:13.5px;">${esc(a.name)}</div><div class="hint">${esc(a.reportType||'')} · ${esc(a.date||'date unknown')}</div></div>
+          ${flagBadge(a.flag)}
+        </div>`).join('')}
+    </div>
+    <div class="panel">
+      <h2>Getting started</h2>
+      ${checklist.map(c=>`
+        <div style="display:flex; align-items:center; gap:9px; padding:6px 0;">
+          <span style="width:16px; height:16px; border-radius:50%; border:1.5px solid ${c.done?'var(--teal)':'var(--line)'}; background:${c.done?'var(--teal)':'transparent'}; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:10px;">${c.done?'✓':''}</span>
+          <span style="font-size:13px; color:${c.done?'var(--ink-soft)':'var(--ink)'};">${c.label}</span>
+          ${!c.done? `<button class="btn ghost" data-go="${c.go}" style="margin-left:auto;">Go →</button>`:''}
+        </div>`).join('')}
+      <div class="divider"></div>
+      <div class="hint">Recent activity</div>
+      ${AUDIT.length===0? `<div class="hint" style="margin-top:6px;">No activity yet.</div>` : AUDIT.slice(0,4).map(a=>`<div style="font-size:12.5px; padding:4px 0;">${esc(a.action)} <span class="hint">— ${new Date(a.time).toLocaleString()}</span></div>`).join('')}
+    </div>
+  </div>
+  `;
+}
+
+/* ============================= VIEW: INTAKE ============================= */
+function viewIntake(){
+  const p = PROFILE || {};
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 01</div><h1>Patient intake</h1>
+  <p>Stored as patient-provided information, always shown separately from anything AI-extracted.</p></div></div>
+  <div class="panel">
+    <h2>Basic details</h2>
+    <div class="field-row">
+      <div class="field"><label for="f-age">Age</label><input id="f-age" type="number" min="0" max="130" value="${esc(p.age||'')}" placeholder="e.g. 42"></div>
+      <div class="field"><label for="f-sex">Sex</label>
+        <select id="f-sex">
+          <option value="" ${!p.sex?'selected':''}>Select…</option>
+          <option value="female" ${p.sex==='female'?'selected':''}>Female</option>
+          <option value="male" ${p.sex==='male'?'selected':''}>Male</option>
+          <option value="intersex" ${p.sex==='intersex'?'selected':''}>Intersex</option>
+          <option value="other" ${p.sex==='other'?'selected':''}>Other / prefer not to say</option>
+        </select>
+      </div>
+      <div class="field"><label for="f-name">Name (optional, local only)</label><input id="f-name" type="text" value="${esc(p.name||'')}" placeholder="Optional"></div>
+    </div>
+    <div class="field-row"><div class="field" style="flex:1 1 100%;"><label for="f-symptoms">Current symptoms</label><textarea id="f-symptoms" placeholder="e.g. fatigue for 2 weeks, occasional dizziness">${esc(p.symptoms||'')}</textarea></div></div>
+    <div class="field-row">
+      <div class="field"><label for="f-conditions">Existing conditions</label><textarea id="f-conditions" placeholder="e.g. type 2 diabetes, hypertension">${esc(p.conditions||'')}</textarea></div>
+      <div class="field"><label for="f-allergies">Allergies</label><textarea id="f-allergies" placeholder="e.g. penicillin, peanuts">${esc(p.allergies||'')}</textarea></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="f-meds">Current medications</label><textarea id="f-meds" placeholder="e.g. metformin 500mg twice daily">${esc(p.medications||'')}</textarea></div>
+      <div class="field"><label for="f-notes">Other relevant notes</label><textarea id="f-notes" placeholder="Family history, recent travel, lifestyle, etc.">${esc(p.notes||'')}</textarea></div>
+    </div>
+    <button class="btn teal" id="saveProfileBtn">Save patient details</button>
+    <span id="saveStatus" class="hint" style="margin-left:10px;"></span>
+  </div>
+  ${p.updatedAt ? `<div class="callout disclaimer">Last saved ${new Date(p.updatedAt).toLocaleString()}. Every field above carries a <span class="badge user">Patient-provided</span> tag throughout the record.</div>`:''}
+  `;
+}
+
+/* ============================= VIEW: REPORTS ============================= */
+function viewReports(){
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 02</div><h1>Medical reports</h1>
+  <p>Upload a lab report, prescription, or scan (image or PDF). MedLens extracts structured data using only what's printed in the document.</p></div></div>
+  <div class="panel">
+    <h2>Add a report</h2>
+    <div class="dropzone" id="dropzone">
+      <div class="dz-title">Click or drop a file here</div>
+      <div class="dz-sub">JPG, PNG, or PDF · processed on-device before extraction</div>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,application/pdf" style="display:none;">
+    </div>
+    <div id="uploadStatus"></div>
+  </div>
+  <div id="pendingReview"></div>
+  <div class="panel">
+    <h2>Report library <span class="count">${REPORTS.length} stored</span></h2>
+    <div id="reportList">${REPORTS.length===0 ? `<div class="empty">No reports yet. <b>Upload one above</b> to begin building the structured record.</div>` : REPORTS.map(reportCardHTML).join('')}</div>
+  </div>`;
+}
+function reportCardHTML(r){
+  return `<div class="report-card">
+    <div><div class="title">${esc(r.reportType||'Report')}</div>
+    <div class="meta">${r.date ? esc(r.date) : 'Date unknown'} · ${r.tests.length} test${r.tests.length===1?'':'s'} · ${esc(r.labName||'Lab unspecified')}</div></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="badge ${r.verified?'verified':'unverified'}">${r.verified? 'Verified':'Needs review'}</span>
+      <button class="btn secondary small" data-view-report="${r.id}">View</button>
+      <button class="btn secondary small" data-del-report="${r.id}">Delete</button>
+    </div>
+  </div>`;
+}
+function bindUploadEvents(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('fileInput');
+  if(!dz) return;
+  dz.addEventListener('click', ()=> input.click());
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  input.addEventListener('change', async (e)=>{ const file = e.target.files[0]; if(file) await handleFile(file); input.value=''; });
+  document.getElementById('reportList')?.querySelectorAll('[data-view-report]').forEach(b=> b.addEventListener('click', ()=> showReportDetail(b.dataset.viewReport)));
+  document.getElementById('reportList')?.querySelectorAll('[data-del-report]').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      if(confirm('Delete this report permanently?')){
+        const rep = REPORTS.find(r=>r.id===b.dataset.delReport);
+        await deleteReportById(b.dataset.delReport);
+        await logAudit('Deleted report', rep? rep.reportType : b.dataset.delReport);
+        REPORTS = await loadAllReports();
+        renderMain();
+      }
+    });
+  });
+}
+function fileToBase64(file){
+  return new Promise((res,rej)=>{ const r = new FileReader(); r.onload = ()=> res(r.result.split(',')[1]); r.onerror = ()=> rej(new Error('Could not read file')); r.readAsDataURL(file); });
+}
+async function handleFile(file){
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.innerHTML = `<div class="loader" style="margin-top:10px;"><span class="spinner"></span> Reading ${esc(file.name)}…</div>`;
+  try{
+    const isPdf = file.type === 'application/pdf';
+    const mediaType = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
+    const base64 = await fileToBase64(file);
+    statusEl.innerHTML = `<div class="loader" style="margin-top:10px;"><span class="spinner"></span> Extracting structured data via backend…</div>`;
+    let parsed;
+    try{ parsed = await apiExtract(file); }
+    catch(e){ statusEl.innerHTML = `<div class="callout warn">Extraction failed: ${esc(e.message)}. <button class="btn ghost" id="retryBtn">Try again</button></div>`; document.getElementById('retryBtn')?.addEventListener('click', ()=>handleFile(file)); return; }
+    if(!parsed.tests) parsed.tests = [];
+    parsed.tests.forEach(t=>{
+      const advisory = parseRangeAdvisory(t.referenceRange, t.value);
+      t._advisory = advisory && advisory !== t.flag ? advisory : null;
+    });
+    PENDING_EXTRACTION = { fileName:file.name, base64, mediaType, kind:isPdf?'pdf':'image', result:parsed };
+    statusEl.innerHTML = `<div class="hint">Extraction complete — review below before saving.</div>`;
+    document.getElementById('pendingReview').innerHTML = pendingReviewHTML();
+    bindPendingReviewEvents();
+    document.getElementById('pendingReview').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){
+    statusEl.innerHTML = `<div class="callout warn">Extraction failed: ${esc(err.message||'unknown error')}. <button class="btn ghost" id="retryBtn2">Try again</button></div>`;
+    document.getElementById('retryBtn2')?.addEventListener('click', ()=>handleFile(file));
+  }
+}
+function pendingReviewHTML(){
+  const p = PENDING_EXTRACTION; if(!p) return '';
+  const r = p.result;
+  const previewSrc = p.kind==='image' ? `data:${p.mediaType};base64,${p.base64}` : null;
+  return `
+  <div class="panel" id="reviewPanel">
+    <h2>Review & verify <span style="font-weight:400; color:var(--slate); font-size:13px;">— ${esc(p.fileName)}</span></h2>
+    <div class="callout">This data was extracted by AI and has <b>not</b> been saved yet. Correct anything wrong, then confirm to add it as <span class="badge verified">Verified</span>. Rows marked with a caution note had a value/range mismatch against a simple numeric cross-check — the printed range itself was not changed.</div>
+    <div class="field-row">
+      <div class="field"><label>Report type</label><input id="rv-type" value="${esc(r.reportType||'')}"></div>
+      <div class="field"><label>Report date</label><input id="rv-date" placeholder="YYYY-MM-DD" value="${esc(r.reportDate||'')}"></div>
+      <div class="field"><label>Lab / facility</label><input id="rv-lab" value="${esc(r.labName||'')}"></div>
+    </div>
+    <div class="hint" style="margin-bottom:10px;">Extraction confidence: <span class="conf-dot conf-${r.extractionConfidence||'medium'}"></span>${esc(r.extractionConfidence||'medium')}</div>
+    <div class="divider"></div>
+    <h3 style="font-family:'IBM Plex Sans'; font-size:13px; color:var(--slate); font-weight:500; margin-bottom:8px;">Extracted tests (${r.tests.length})</h3>
+    <div id="verifyTable">
+      <div class="verify-row verify-head"><div>Test</div><div>Value</div><div>Unit</div><div>Reference range</div><div>Flag</div><div>Confidence</div><div></div></div>
+      ${r.tests.map((t,i)=> verifyRowHTML(t,i)).join('')}
+    </div>
+    <button class="btn ghost" id="addTestRow" type="button">+ add a test row</button>
+    <div class="divider"></div>
+    <div class="field"><label>Clinical notes on report</label><textarea id="rv-notes">${esc(r.clinicalNotes||'')}</textarea></div>
+    ${previewSrc ? `<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:12.5px; color:var(--slate);">View original image</summary><img src="${previewSrc}" style="max-width:100%; margin-top:8px; border:1px solid var(--line); border-radius:3px;"></details>` : ''}
+    <div class="divider"></div>
+    <button class="btn teal" id="confirmSaveBtn">Confirm & save to record</button>
+    <button class="btn secondary" id="discardBtn" style="margin-left:8px;">Discard</button>
+  </div>`;
+}
+function verifyRowHTML(t,i){
+  return `<div class="verify-row" data-row="${i}">
+    <div><input class="rv-name" value="${esc(t.name||'')}">${t._advisory?`<div class="check-note">check suggests "${t._advisory}"</div>`:''}</div>
+    <input class="rv-value" value="${esc(t.value||'')}">
+    <input class="rv-unit" value="${esc(t.unit||'')}">
+    <input class="rv-range" value="${esc(t.referenceRange||'')}" placeholder="not printed">
+    <select class="rv-flag">${['unknown','low','normal','high'].map(f=>`<option value="${f}" ${t.flag===f?'selected':''}>${f}</option>`).join('')}</select>
+    <span style="font-size:11px; color:var(--slate);"><span class="conf-dot conf-${t.confidence||'medium'}"></span>${esc(t.confidence||'medium')}</span>
+    <button class="row-x" type="button" title="Remove row">✕</button>
+  </div>`;
+}
+function bindPendingReviewEvents(){
+  document.getElementById('addTestRow')?.addEventListener('click', ()=>{
+    const wrap = document.getElementById('verifyTable');
+    const i = wrap.querySelectorAll('.verify-row[data-row]').length;
+    wrap.insertAdjacentHTML('beforeend', verifyRowHTML({name:'',value:'',unit:'',referenceRange:'',flag:'unknown',confidence:'low'}, i));
+    bindRowRemovers();
+  });
+  bindRowRemovers();
+  document.getElementById('discardBtn')?.addEventListener('click', ()=>{ PENDING_EXTRACTION = null; document.getElementById('pendingReview').innerHTML=''; document.getElementById('uploadStatus').innerHTML=''; });
+  document.getElementById('confirmSaveBtn')?.addEventListener('click', async ()=>{
+    const rows = [...document.querySelectorAll('#verifyTable .verify-row[data-row]')];
+    const tests = rows.map(row=>({
+      name: row.querySelector('.rv-name').value.trim(),
+      value: row.querySelector('.rv-value').value.trim(),
+      unit: row.querySelector('.rv-unit').value.trim()||null,
+      referenceRange: row.querySelector('.rv-range').value.trim()||null,
+      flag: row.querySelector('.rv-flag').value,
+      confidence: PENDING_EXTRACTION.result.tests[row.dataset.row]?.confidence || 'medium',
+      observation: PENDING_EXTRACTION.result.tests[row.dataset.row]?.observation || null,
+    })).filter(t=>t.name);
+    const rep = {
+      id: 'rep_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+      title: document.getElementById('rv-type').value.trim() || 'Untitled report',
+      reportType: document.getElementById('rv-type').value.trim() || 'Report',
+      date: document.getElementById('rv-date').value.trim() || null,
+      labName: document.getElementById('rv-lab').value.trim() || null,
+      clinicalNotes: document.getElementById('rv-notes').value.trim() || null,
+      tests, fileName: PENDING_EXTRACTION.fileName,
+      extractionConfidence: PENDING_EXTRACTION.result.extractionConfidence || 'medium',
+      verified: true, createdAt: new Date().toISOString(),
+    };
+    await saveReport(rep);
+    await logAudit('Saved verified report', `${rep.reportType} (${rep.tests.length} tests)`);
+    REPORTS = await loadAllReports();
+    PENDING_EXTRACTION = null;
+    renderMain();
+  });
+}
+function bindRowRemovers(){
+  document.querySelectorAll('#verifyTable .row-x').forEach(btn=> btn.onclick = ()=> btn.closest('.verify-row').remove());
+}
+function showReportDetail(id){
+  const r = REPORTS.find(x=>x.id===id); if(!r) return;
+  const win = document.getElementById('pendingReview');
+  win.innerHTML = `
+  <div class="panel">
+    <h2>${esc(r.reportType)} <span class="count">${r.date||'date unknown'}</span></h2>
+    <div class="source-split">
+      <div class="source-col"><h3>Structured (verified)</h3>
+        <table><tr><th>Test</th><th>Value</th><th>Range</th><th>Flag</th></tr>
+        ${r.tests.map(t=>`<tr><td>${esc(t.name)}</td><td class="num">${esc(t.value)} ${esc(t.unit||'')}</td><td class="num">${esc(t.referenceRange||'—')}</td><td>${flagBadge(t.flag)}</td></tr>`).join('')}
+        </table></div>
+      <div class="source-col"><h3>Source file</h3>
+        <div class="raw-pane">${esc(r.fileName||'')}\nLab: ${esc(r.labName||'—')}\nNotes: ${esc(r.clinicalNotes||'—')}</div></div>
+    </div>
+    <button class="btn secondary" style="margin-top:14px;" id="closeDetail">Close</button>
+  </div>`;
+  document.getElementById('closeDetail').addEventListener('click', ()=>{ win.innerHTML=''; });
+  win.scrollIntoView({behavior:'smooth'});
+}
+function flagBadge(f){
+  const map = {high:'High', low:'Low', normal:'Normal', unknown:'Range not provided'};
+  return `<span class="badge flag-${f||'unknown'}">${map[f]||'Unknown'}</span>`;
+}
+
+/* ============================= VIEW: RECORD ============================= */
+function viewRecord(){
+  const allTests = [];
+  REPORTS.forEach(r=> r.tests.forEach(t=> allTests.push({...t, reportType:r.reportType, date:r.date, id:r.id})));
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 03</div><h1>Structured record</h1>
+  <p>One reviewable view combining what the patient reported and what was extracted from documents — each item clearly labeled by source.</p></div>
+  <button class="btn secondary no-print" id="downloadJsonBtn">Download record JSON</button></div>
+
+  <div class="panel">
+    <h2>Patient-provided information</h2>
+    ${PROFILE ? `<table>
+      <tr><td style="width:160px; color:var(--ink-soft);">Age / Sex</td><td>${esc(PROFILE.age||'—')} ${PROFILE.sex?'· '+esc(PROFILE.sex):''} <span class="badge user" style="margin-left:8px;">Patient-provided</span></td></tr>
+      <tr><td style="color:var(--ink-soft);">Symptoms</td><td>${esc(PROFILE.symptoms||'—')}</td></tr>
+      <tr><td style="color:var(--ink-soft);">Conditions</td><td>${esc(PROFILE.conditions||'—')}</td></tr>
+      <tr><td style="color:var(--ink-soft);">Allergies</td><td>${esc(PROFILE.allergies||'—')}</td></tr>
+      <tr><td style="color:var(--ink-soft);">Medications</td><td>${esc(PROFILE.medications||'—')}</td></tr>
+      <tr><td style="color:var(--ink-soft);">Other notes</td><td>${esc(PROFILE.notes||'—')}</td></tr>
+    </table>` : `<div class="empty">No patient details yet — add them in <b>Patient Intake</b>.</div>`}
+  </div>
+
+  <div class="panel">
+    <h2>Lab & report findings <span class="count">${allTests.length} values across ${REPORTS.length} reports</span></h2>
+    ${allTests.length ? `
+    <div class="search-bar no-print">
+      <input id="recSearch" placeholder="Search test name…">
+      <select id="recFlagFilter"><option value="">All flags</option><option value="high">High</option><option value="low">Low</option><option value="normal">Normal</option><option value="unknown">Range not provided</option></select>
+    </div>
+    <table id="recTable">
+      <tr><th>Test</th><th class="num">Value</th><th class="num">Reference range</th><th>Flag</th><th>Date</th><th>Source</th><th>Confidence</th></tr>
+      ${allTests.map(t=>`
+      <tr data-name="${esc((t.name||'').toLowerCase())}" data-flag="${t.flag||'unknown'}">
+        <td>${esc(t.name)}${t.observation?`<div class="hint">${esc(t.observation)}</div>`:''}</td>
+        <td class="num">${esc(t.value)} ${esc(t.unit||'')}</td>
+        <td class="num">${esc(t.referenceRange||'not printed in source')}</td>
+        <td>${flagBadge(t.flag)}</td>
+        <td class="num">${esc(t.date||'—')}</td>
+        <td><span class="badge ai">AI-extracted</span></td>
+        <td><span class="conf-dot conf-${t.confidence||'medium'}"></span>${esc(t.confidence||'medium')}</td>
+      </tr>`).join('')}
+    </table>` : `<div class="empty">No report data yet — upload a report in <b>Reports</b>.</div>`}
+  </div>`;
+}
+function bindRecordEvents(){
+  const search = document.getElementById('recSearch');
+  const flagSel = document.getElementById('recFlagFilter');
+  function applyFilter(){
+    const q = (search?.value||'').toLowerCase(); const f = flagSel?.value||'';
+    document.querySelectorAll('#recTable tr[data-name]').forEach(row=>{
+      const matchesQ = !q || row.dataset.name.includes(q);
+      const matchesF = !f || row.dataset.flag===f;
+      row.style.display = (matchesQ && matchesF) ? '' : 'none';
+    });
+  }
+  search?.addEventListener('input', applyFilter);
+  flagSel?.addEventListener('change', applyFilter);
+  document.getElementById('downloadJsonBtn')?.addEventListener('click', ()=>{
+    const payload = { patient: PATIENTS.find(p=>p.id===CURRENT_PID), profile: PROFILE, reports: REPORTS, exportedAt: new Date().toISOString() };
+    downloadJson(payload, 'medlens-record.json');
+  });
+}
+
+/* ============================= VIEW: TIMELINE ============================= */
+function viewTimeline(){
+  const sorted = [...REPORTS].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  const history = {};
+  sorted.forEach(r=> r.tests.forEach(t=>{ const key=(t.name||'').toLowerCase(); if(!history[key]) history[key]=[]; history[key].push({date:r.date, value:parseFloat(t.value), raw:t.value}); }));
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 04</div><h1>Timeline</h1>
+  <p>Reports in chronological order, with trend indicators where the same test appears more than once.</p></div></div>
+  <div class="panel">
+    ${sorted.length===0 ? `<div class="empty">No reports yet to place on a timeline.</div>` : `
+    <div class="timeline">
+      ${sorted.map(r=>`
+      <div class="tl-item">
+        <div class="tl-date">${esc(r.date||'Date unknown')}</div>
+        <div style="font-weight:500; font-family:'Source Serif 4',serif; font-size:15px;">${esc(r.reportType)} <span class="badge ${r.verified?'verified':'unverified'}" style="margin-left:6px;">${r.verified?'Verified':'Needs review'}</span></div>
+        <div class="hint" style="margin-bottom:6px;">${esc(r.labName||'Lab unspecified')}</div>
+        <table>
+          ${r.tests.map(t=>{
+            const key=(t.name||'').toLowerCase(); const seq = history[key]||[];
+            const idx = seq.findIndex(s=> s.date===r.date && String(s.raw)===String(t.value));
+            let trendHtml = '<span class="trend flat">first record</span>';
+            if(idx>0){
+              const prev = seq[idx-1];
+              if(!isNaN(prev.value) && !isNaN(parseFloat(t.value))){
+                const diff = parseFloat(t.value)-prev.value;
+                trendHtml = Math.abs(diff) < 1e-9 ? `<span class="trend flat">→ unchanged</span>` : `<span class="trend ${diff>0?'up':'down'}">${diff>0?'↑':'↓'} ${diff>0?'+':''}${diff.toFixed(2)} vs prior</span>`;
+              }
+            }
+            return `<tr><td>${esc(t.name)}</td><td class="num">${esc(t.value)} ${esc(t.unit||'')}</td><td>${flagBadge(t.flag)}</td><td>${trendHtml}</td></tr>`;
+          }).join('')}
+        </table>
+      </div>`).join('')}
+    </div>`}
+  </div>`;
+}
+
+/* ============================= VIEW: SUMMARY ============================= */
+function viewSummary(){
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 05</div><h1>AI summary</h1>
+  <p>A plain-language recap of the record on file. This is an organizational aid, not a diagnosis — always confirm results with a licensed clinician.</p></div></div>
+  <div class="panel">
+    <h2>Patient-friendly summary</h2>
+    <button class="btn teal" id="genSummaryBtn" ${(!PROFILE && REPORTS.length===0)?'disabled':''}>Generate summary</button>
+    <div id="summaryOut" style="margin-top:16px;"></div>
+    ${(!PROFILE && REPORTS.length===0) ? `<div class="hint" style="margin-top:8px;">Add patient details or a report first.</div>`:''}
+  </div>
+  <div class="panel">
+    <h2>Consistency check</h2>
+    <p class="hint" style="margin-bottom:10px;">Scans for clerical conflicts only — e.g. a listed medication that matches a listed allergy, or contradicting values for the same test.</p>
+    <button class="btn secondary" id="genConflictBtn" ${(!PROFILE && REPORTS.length===0)?'disabled':''}>Run consistency check</button>
+    <div id="conflictOut" style="margin-top:16px;"></div>
+  </div>
+  <div class="panel no-print">
+    <h2>Export</h2>
+    <p class="hint" style="margin-bottom:10px;">Print or save the current record as a PDF, or download it as portable JSON.</p>
+    <button class="btn secondary" onclick="window.print()">Print / Export as PDF</button>
+    <button class="btn secondary" id="downloadJsonBtn2" style="margin-left:8px;">Download record JSON</button>
+  </div>`;
+}
+function buildStructuredPayload(){ return { profile: PROFILE, reports: REPORTS.map(r=>({reportType:r.reportType, date:r.date, labName:r.labName, tests:r.tests, clinicalNotes:r.clinicalNotes})) }; }
+function bindSummaryEvents(){
+  document.getElementById('downloadJsonBtn2')?.addEventListener('click', ()=>{
+    const payload = { patient: PATIENTS.find(p=>p.id===CURRENT_PID), profile: PROFILE, reports: REPORTS, exportedAt: new Date().toISOString() };
+    downloadJson(payload, 'medlens-record.json');
+  });
+  document.getElementById('genSummaryBtn')?.addEventListener('click', async ()=>{
+    const out = document.getElementById('summaryOut');
+    out.innerHTML = `<div class="loader"><span class="spinner"></span> Composing summary…</div>`;
+    try{
+      const payload = buildStructuredPayload();
+      const text = await apiSummary(payload);
+      out.innerHTML = `<div class="summary-text">${esc(text)}</div><div class="callout disclaimer" style="margin-top:14px;">AI-generated summary — <span class="badge ai">AI-generated</span> — not a diagnosis or treatment plan. Share with a licensed clinician for interpretation.</div>`;
+      await logAudit('Generated AI summary', '');
+    }catch(e){ out.innerHTML = `<div class="callout warn">Could not generate a summary: ${esc(e.message)} <button class="btn ghost" id="retrySum">Try again</button></div>`; document.getElementById('retrySum')?.addEventListener('click', ()=>document.getElementById('genSummaryBtn').click()); }
+  });
+  document.getElementById('genConflictBtn')?.addEventListener('click', async ()=>{
+    const out = document.getElementById('conflictOut');
+    out.innerHTML = `<div class="loader"><span class="spinner"></span> Checking for inconsistencies…</div>`;
+    try{
+      const payload = buildStructuredPayload();
+      const issues = await apiConflictCheck(payload);
+      out.innerHTML = (!Array.isArray(issues) || issues.length===0) ? `<div class="hint">No clerical inconsistencies detected.</div>` : issues.map(i=>`<div class="conflict-item ${i.severity==='warning'?'warning':'info'}"><b>${esc(i.issue)}</b><div class="hint">${esc(i.detail)}</div></div>`).join('');
+      await logAudit('Ran consistency check', `${Array.isArray(issues)?issues.length:0} item(s) found`);
+    }catch(e){ out.innerHTML = `<div class="callout warn">Check failed: ${esc(e.message)} <button class="btn ghost" id="retryConf">Try again</button></div>`; document.getElementById('retryConf')?.addEventListener('click', ()=>document.getElementById('genConflictBtn').click()); }
+  });
+}
+
+/* ============================= VIEW: HISTORY ============================= */
+function viewHistory(){
+  return `
+  <div class="view-head"><div><div class="eyebrow">Step 06</div><h1>Audit history</h1>
+  <p>Every save, edit, and AI generation for this patient, in one traceable log.</p></div></div>
+  <div class="panel">
+    ${AUDIT.length===0 ? `<div class="empty">No activity recorded yet.</div>` : AUDIT.map(a=>`
+      <div class="audit-item"><div class="audit-time">${new Date(a.time).toLocaleString()}</div><div><b>${esc(a.action)}</b>${a.detail?` — ${esc(a.detail)}`:''}</div></div>
+    `).join('')}
+  </div>`;
+}
+
+/* ============================= EVENT BINDING PER VIEW ============================= */
+function bindViewEvents(){
+  if(currentView==='dashboard'){
+    document.querySelectorAll('[data-go]').forEach(b=> b.addEventListener('click', ()=>{ currentView=b.dataset.go; renderMain(); document.getElementById('railNav').querySelectorAll('.rail-btn').forEach(x=>x.classList.toggle('active', x.dataset.v===currentView)); }));
+  } else if(currentView==='intake'){
+    document.getElementById('saveProfileBtn')?.addEventListener('click', async ()=>{
+      const p = {
+        age: document.getElementById('f-age').value, sex: document.getElementById('f-sex').value, name: document.getElementById('f-name').value,
+        symptoms: document.getElementById('f-symptoms').value, conditions: document.getElementById('f-conditions').value,
+        allergies: document.getElementById('f-allergies').value, medications: document.getElementById('f-meds').value, notes: document.getElementById('f-notes').value,
+      };
+      await saveProfile(p);
+      await logAudit('Updated patient intake', '');
+      document.getElementById('saveStatus').textContent = 'Saved.';
+      setTimeout(()=>{ const s=document.getElementById('saveStatus'); if(s) s.textContent=''; }, 2200);
+    });
+  } else if(currentView==='reports'){ bindUploadEvents(); }
+  else if(currentView==='record'){ bindRecordEvents(); }
+  else if(currentView==='summary'){ bindSummaryEvents(); }
+}
+
+/* ============================= UTIL ============================= */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function downloadJson(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================= TOP-LEVEL CONTROLS ============================= */
+async function loadPatientState(){
+  await loadProfile();
+  REPORTS = await loadAllReports();
+  AUDIT = await loadAudit();
+}
+function bindShellControls(){
+  document.getElementById('lockBtn').addEventListener('click', async ()=>{
+    let pin = await getPin();
+    if(!pin){
+      pin = prompt('Set a local unlock PIN (4-8 digits). Leave blank to cancel:');
+      if(!pin) return;
+      await setPin(pin.trim());
+    }
+    renderLock();
+  });
+  document.getElementById('wipeBtn').addEventListener('click', async ()=>{
+    const cur = PATIENTS.find(p=>p.id===CURRENT_PID);
+    if(confirm(`Delete all data for "${cur?cur.label:'this patient'}"? This cannot be undone.`)) await wipeCurrentPatient();
+  });
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const payload = { patient: PATIENTS.find(p=>p.id===CURRENT_PID), profile: PROFILE, reports: REPORTS, audit: AUDIT, exportedAt: new Date().toISOString() };
+    downloadJson(payload, 'medlens-patient-backup.json');
+  });
+  document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const label = (data.patient && data.patient.label) ? data.patient.label + ' (imported)' : 'Imported patient';
+      const id = await createPatient(label);
+      PATIENTS = await loadPatientsIndex();
+      CURRENT_PID = id;
+      if(data.profile) await saveProfile(data.profile);
+      if(Array.isArray(data.reports)) for(const r of data.reports) await saveReport(r);
+      await logAudit('Imported patient record', file.name);
+      await loadPatientState();
+      currentView = 'dashboard';
+      render();
+    }catch(err){ alert('Could not import this file: '+err.message); }
+    e.target.value='';
+  });
+}
+
+async function boot(){
+  document.getElementById('main').innerHTML = `<div class="loader" style="margin-top:40px;"><span class="spinner"></span> Loading patient record…</div>`;
+  PATIENTS = await loadPatientsIndex();
+  if(PATIENTS.length===0){ const id = await createPatient('Patient 1'); PATIENTS = await loadPatientsIndex(); CURRENT_PID = id; }
+  else CURRENT_PID = PATIENTS[0].id;
+  await loadPatientState();
+  bindShellControls();
+  render();
+}
+
+renderLock();
+</script>
+</body>
+</html>
